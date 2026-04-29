@@ -1,0 +1,122 @@
+[
+    {
+        "id": 1,
+        "type": "lyrics_retrieval",
+        "question": "Which song contains the lyrics: \"He said the way my blue eyes shined Put those Georgia stars to shame that night\"?",
+        "expected_keywords": ["Tim McGraw", "Taylor Swift"]
+    },
+    {
+        "id": 2,
+        "type": "lyrics_retrieval",
+        "question": "Can you tell me the lyrics of the song \"Style\"?",
+        "expected_keywords": ["Midnight", "headlights", "paradise"]
+    },
+    {
+        "id": 3,
+        "type": "lyrics_retrieval",
+        "question": "Which song has the lyrics \"Fever dream high in the quiet of the night\"?",
+        "expected_keywords": ["Cruel Summer", "Taylor Swift"]
+    },
+    {
+        "id": 4,
+        "type": "lyrics_retrieval",
+        "question": "Please find the song that contains the lyrics \"School bell rings, walk me home\"",
+        "expected_keywords": ["It's Nice To Have A Friend", "Lover"]
+    },
+    {
+        "id": 5,
+        "type": "lyrics_retrieval",
+        "question": "What are the full lyrics of the song \"Anti-Hero\"?",
+        "expected_keywords": ["Midnights", "own devices"]
+    },
+    {
+        "id": 6,
+        "type": "lyrics_retrieval",
+        "question": "Which song contains the lyrics \"I hope you think of me\"?",
+        "expected_keywords": ["Tim McGraw", "Taylor Swift"]
+    },
+    {
+        "id": 7,
+        "type": "lyrics_retrieval",
+        "question": "Please retrieve the lyrics of \"champagne problems\"",
+        "expected_keywords": ["night train", "marriage", "proposal"]
+    },
+    {
+        "id": 8,
+        "type": "lyrics_retrieval",
+        "question": "Which Taylor Swift song contains the lyrics \"You booked the night train for a reason\"?",
+        "expected_keywords": ["champagne problems", "evermore"]
+    },
+    {
+        "id": 9,
+        "type": "lyrics_retrieval",
+        "question": "Can you find the lyrics for \"You're Not Sorry\"?",
+        "expected_keywords": ["wasting hoping", "apology", "betrayal"]
+    },
+    {
+        "id": 10,
+        "type": "lyrics_retrieval",
+        "question": "Which song contains the lyrics \"I hit the ground running\"?",
+        "expected_keywords": ["the 1", "folklore"]
+    },
+    {
+        "id": 11,
+        "type": "emotion_analysis",
+        "question": "What emotions does the song \"Anti-Hero\" express?",
+        "expected_keywords": ["insecurities", "self-hatred", "honest", "flaws"]
+    },
+    {
+        "id": 12,
+        "type": "emotion_analysis",
+        "question": "Can you recommend some songs about healing and letting go?",
+        "expected_keywords": ["Clean", "healing", "Breathe", "Begin Again", "Soon You’ll Get Better"]
+    },
+    {
+        "id": 13,
+        "type": "emotion_analysis",
+        "question": "What is the main emotion expressed in the song \"Fifteen\"?",
+        "expected_keywords": ["naive", "first love", "heartbreak", "15"]
+    },
+    {
+        "id": 14,
+        "type": "emotion_analysis",
+        "question": "Can you recommend some sweet romantic love songs?",
+        "expected_keywords": ["Everything Has Changed", "Mary’s Song (Oh My My My)", "Love Story","Sparks Fly","Stay Stay Stay","Wildest Dreams"]
+    },
+    {
+        "id": 15,
+        "type": "emotion_analysis",
+        "question": "What kind of emotions does \"Cruel Summer\" express?",
+        "expected_keywords": ["painful", "secret", "longing", "desperate", "intense"]
+    },
+    {
+        "id": 16,
+        "type": "emotion_analysis",
+        "question": "Are there any songs suitable for expressing nostalgia and regret about the past?",
+        "expected_keywords": ["the 1", "afterglow", "Tim McGraw", "betty"]
+    },
+    {
+        "id": 17,
+        "type": "emotion_analysis",
+        "question": "What is the emotional tone of the song \"It's Nice To Have A Friend\"?",
+        "expected_keywords": ["childhood", "friendship", "dreamy", "innocent", "quiet love"]
+    },
+    {
+        "id": 18,
+        "type": "emotion_analysis",
+        "question": "Can you recommend songs about friendship turning into love?",
+        "expected_keywords": ["It's Nice To Have A Friend", "friend", "love"]
+    },
+    {
+        "id": 19,
+        "type": "emotion_analysis",
+        "question": "What is the theme and emotion of the song \"You Need To Calm Down\"?",
+        "expected_keywords": ["LGBTQ+", "equality", "fun", "inclusive", "upbeat"]
+    },
+    {
+        "id": 20,
+        "type": "emotion_analysis",
+        "question": "Can you recommend some nostalgic Taylor Swift songs?",
+        "expected_keywords": ["Tim McGraw", "Fifteen", "Style", "nostalgia"]
+    }
+]
