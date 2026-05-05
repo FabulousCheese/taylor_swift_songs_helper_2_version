@@ -21,8 +21,8 @@ embeddings = HuggingFaceEmbeddings(
     encode_kwargs={"normalize_embeddings": EMBEDDING_NORMALIZE}
 )
 
-INDEX_PATH = "/workspace/index/faiss_taylor_final_index"
-DATA_PATH = "/workspace/data/merged.xlsx"
+INDEX_PATH = "../../index/faiss_taylor_final_index"
+DATA_PATH = "../../data/merged.xlsx"
 
 df = pd.read_excel(DATA_PATH)
 

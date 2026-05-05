@@ -28,8 +28,8 @@ text_splitter = RecursiveCharacterTextSplitter(
     length_function=len
 )
 
-ROOT_FOLDER = "/workspace/data/Taylor_Swift_Genius"
-INDEX_PATH = "/workspace/index/faiss_lyrics_index"
+ROOT_FOLDER = "../../data/Taylor_Swift_Genius"
+INDEX_PATH = "../../index/faiss_lyrics_index"
 
 documents = []
 
