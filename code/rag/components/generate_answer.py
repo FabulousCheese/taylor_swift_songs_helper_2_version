@@ -13,22 +13,16 @@ class GenerationAnswer:
 
     def __init__(self):
         self.prompt = ChatPromptTemplate.from_template("""
-You are a professional Taylor Swift assistant.
-Answer ONLY based on the provided context.
-Be clear, concise, and accurate.
+You are a Taylor Swift assistant. Answer concisely based on context.
 
-Context:
-{context}
+Context: {context}
+Question: {question}
 
-Question:
-{question}
-
-Instructions:
-- If the user asks for songs similar to a song, FOCUS ON THE MOOD, THEME, VIBE, STORY of that song.
-- Choose the most similar songs FROM THE CONTEXT.
-- Do NOT say no similar songs. Just recommend the closest ones.
-- Always cite your sources using [Track: xxx, Album: xxx] format.
-- Be natural, concise.
+Rules:
+- Recommend songs ONLY from context
+- Cite: [Track - Album]
+- Keep answer brief (under 3 sentences)
+- If asking for similar songs, focus on mood/theme
 
 Answer:
 """)

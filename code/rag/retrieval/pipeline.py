@@ -8,8 +8,8 @@ from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 
 from .query_rewrite import QueryRewriter
-from .context_compressor import ContextCompressor, LLMFilter
-from .reranker import create_reranker, LLMReranker
+from .context_compressor import ContextCompressor
+from .reranker import create_reranker
 from ..logger import get_logger
 
 logger = get_logger(__name__)
@@ -41,7 +41,6 @@ class RetrievalPipeline:
         self.query_rewriter = QueryRewriter() if use_query_rewrite else None
         self.reranker = create_reranker(reranker_type) if use_rerank else None
         self.compressor = ContextCompressor() if use_compression else None
-        self.llm_filter = LLMFilter()
         
         self.use_query_rewrite = use_query_rewrite
         self.use_rerank = use_rerank
@@ -97,16 +96,12 @@ class RetrievalPipeline:
                 "step_info": step_info
             }
         
-        # Step 3: LLM过滤
-        filtered_docs = self.llm_filter.filter_docs(llm, unique_docs, question)
-        step_info["filtered_count"] = len(filtered_docs)
-        
-        # Step 4: 重排序
+        # Step 3: 重排序
         if self.use_rerank and self.reranker:
-            reranked_docs = self.reranker.rerank(llm, filtered_docs, question, top_k=top_k)
+            reranked_docs = self.reranker.rerank(llm, unique_docs, question, top_k=top_k)
             step_info["reranked"] = True
         else:
-            reranked_docs = filtered_docs[:top_k]
+            reranked_docs = unique_docs[:top_k]
             step_info["reranked"] = False
         
         logger.info(f"重排序完成: 返回 {len(reranked_docs)} 个文档")
@@ -118,7 +113,8 @@ class RetrievalPipeline:
                 context = self.compressor.compress(llm, reranked_docs, question)
             else:
                 context = "\n\n".join([d.page_content for d in reranked_docs])
-        
+                logger.info(f"Context 长度: {len(context)} 字符")
+
         return {
             "docs": reranked_docs,
             "context": context,

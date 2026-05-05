@@ -13,7 +13,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 import pandas as pd
 
-from ..rag.config import EMBEDDING_MODEL, EMBEDDING_DEVICE, EMBEDDING_NORMALIZE
+from rag.config import EMBEDDING_MODEL, EMBEDDING_DEVICE, EMBEDDING_NORMALIZE
 
 embeddings = HuggingFaceEmbeddings(
     model_name=EMBEDDING_MODEL,
@@ -21,8 +21,8 @@ embeddings = HuggingFaceEmbeddings(
     encode_kwargs={"normalize_embeddings": EMBEDDING_NORMALIZE}
 )
 
-INDEX_PATH = os.path.join(PROJECT_ROOT, "index", "faiss_taylor_final_index")
-DATA_PATH = os.path.join(PROJECT_ROOT, "data", "merged.xlsx")
+INDEX_PATH = "/workspace/index/faiss_taylor_final_index"
+DATA_PATH = "/workspace/data/merged.xlsx"
 
 df = pd.read_excel(DATA_PATH)
 
@@ -50,7 +50,7 @@ print(f"✅ 总文档数：{len(documents)}")
 print("🔨 正在构建主题向量索引...")
 
 vectorstore = FAISS.from_documents(documents, embeddings)
-os.makedirs(os.path.join(PROJECT_ROOT, "index"), exist_ok=True)
+os.makedirs(INDEX_PATH, exist_ok=True)
 vectorstore.save_local(INDEX_PATH)
 
 print("🎉 主题索引构建完成！")

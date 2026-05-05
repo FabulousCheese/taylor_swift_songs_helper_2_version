@@ -22,7 +22,7 @@ INDEX_THEME = "../index/faiss_taylor_final_index"  # 主题/情绪/专辑索引
 INDEX_LYRICS = "../index/faiss_lyrics_index"      # 歌词专用索引
 
 # ====================== 检索配置 ======================
-RETRIEVAL_TOP_K = 5           # 检索返回数量
+RETRIEVAL_TOP_K = 3           # 检索返回数量
 LYRICS_TOP_K = 3              # 歌词检索数量
 SIMILARITY_THRESHOLD = 0.3    # 拒答阈值（低于此分数直接返回无法回答）
 

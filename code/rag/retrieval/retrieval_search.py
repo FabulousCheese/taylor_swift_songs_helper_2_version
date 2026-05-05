@@ -31,12 +31,15 @@ class RetrievalSearch:
 
     def smart_route_intent(self, llm, question: str) -> str:
         """让 LLM 判断用户意图"""
-        try:
-            response = llm.invoke(f"{self.intent_prompt}\n\nQuestion: {question}\nAnswer:")
-            intent = response.content.strip().lower()
+        try:            
             
-            if intent not in ["lyrics", "theme"]:
-                logger.warning(f"LLM 返回了未知意图 '{intent}'，默认使用 theme")
+            lyrics_keywords = ["歌词", "lyrics", "词","lyric"]
+            theme_keywords = ["情绪", "主题", "专辑", "推荐", "故事", "感受", "适合","recommend","feeling"]
+            
+            lyrics_count = sum(1 for kw in lyrics_keywords if kw in question.lower())
+            if lyrics_count > 0:
+                intent = "lyrics"
+            else:
                 intent = "theme"
             
             logger.info(f"意图识别结果: {intent}")
@@ -45,6 +48,23 @@ class RetrievalSearch:
         except Exception as e:
             logger.error(f"意图识别失败: {e}")
             return "theme"
+    
+    # def smart_route_intent(self, llm, question: str) -> str:
+    #     """让 LLM 判断用户意图"""
+    #     try:            
+    #         response = llm.invoke(f"{self.intent_prompt}\n\nQuestion: {question}\nAnswer:")
+    #         intent = response.content.strip().lower()
+            
+    #         if intent not in ["lyrics", "theme"]:
+    #             logger.warning(f"LLM 返回了未知意图 '{intent}'，默认使用 theme")
+    #             intent = "theme"
+            
+    #         logger.info(f"意图识别结果: {intent}")
+    #         return intent
+            
+    #     except Exception as e:
+    #         logger.error(f"意图识别失败: {e}")
+    #         return "theme"
 
     def wants_full_lyrics(self, question: str) -> bool:
         """检查问题是否要求完整歌词"""
@@ -125,7 +145,7 @@ class RetrievalSearch:
                         filter_dict={"lyric_type": "whole"}
                     )
                 else:
-                    results = self.hybrid_search(index_loader, question, k=LYRICS_TOP_K)
+                    results = self.hybrid_search(index_loader, question, k=LYRICS_TOP_K,filter_dict={"lyric_type": "part"})
             else:
                 logger.info("启用：主题/情绪检索模式")
                 theme_index = index_loader.get_theme_index()

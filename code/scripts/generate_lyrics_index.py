@@ -13,7 +13,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from ..rag.config import EMBEDDING_MODEL, EMBEDDING_DEVICE, EMBEDDING_NORMALIZE
+from rag.config import EMBEDDING_MODEL, EMBEDDING_DEVICE, EMBEDDING_NORMALIZE
 
 embeddings = HuggingFaceEmbeddings(
     model_name=EMBEDDING_MODEL,
@@ -28,8 +28,8 @@ text_splitter = RecursiveCharacterTextSplitter(
     length_function=len
 )
 
-ROOT_FOLDER = os.path.join(PROJECT_ROOT, "data", "Taylor_Swift_Genius")
-INDEX_PATH = os.path.join(PROJECT_ROOT, "index", "faiss_lyrics_index")
+ROOT_FOLDER = "/workspace/data/Taylor_Swift_Genius"
+INDEX_PATH = "/workspace/index/faiss_lyrics_index"
 
 documents = []
 
@@ -87,7 +87,7 @@ print(f"✅ 总歌曲数：{len(documents)}")
 print("🔨 正在构建歌词向量索引...")
 
 vectorstore = FAISS.from_documents(documents, embeddings)
-os.makedirs(os.path.join(PROJECT_ROOT, "index"), exist_ok=True)
+os.makedirs(INDEX_PATH, exist_ok=True)
 vectorstore.save_local(INDEX_PATH)
 
 print("🎉 歌词索引构建完成！")
