@@ -3,6 +3,7 @@
 以类的方式提供 FAISS 索引访问
 """
 
+from collections import defaultdict
 from dotenv import load_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -83,3 +84,39 @@ class IndexLoader:
             logger.warning("歌词索引未加载，尝试重新加载")
             self.load_all()
         return self.db_lyrics
+
+    def get_song_chunks_count(self) -> dict:
+        """获取每首歌的 chunks 数量统计
+        
+        Returns:
+            dict: {歌曲名: chunks数量}
+        """
+        if self.db_lyrics is None:
+            self.load_all()
+        
+        if self.db_lyrics is None:
+            return {}
+        
+        song_chunks_count = defaultdict(int)
+        # 正确遍历 docstore 的方式
+        try:
+            for doc_id, doc in self.db_lyrics.docstore._dict.items():
+                if doc and doc.metadata:
+                    track = doc.metadata.get("track", "")
+                    if track:
+                        song_chunks_count[track] += 1
+        except Exception as e:
+            logger.warning(f"遍历 docstore 失败: {e}")
+            # 备用方案：使用 index_to_docstore_id
+            for doc_id in self.db_lyrics.index_to_docstore_id:
+                try:
+                    doc = self.db_lyrics.docstore.search(doc_id)
+                    if doc and doc.metadata:
+                        track = doc.metadata.get("track", "")
+                        if track:
+                            song_chunks_count[track] += 1
+                except:
+                    pass
+        
+        logger.info(f"歌词 chunks 统计: {len(song_chunks_count)} 首歌, 共 {sum(song_chunks_count.values())} 个 chunks")
+        return dict(song_chunks_count)

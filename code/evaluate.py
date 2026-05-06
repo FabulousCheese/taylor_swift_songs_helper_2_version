@@ -76,6 +76,82 @@ def calculate_f1(precision: float, recall: float) -> float:
     return 2 * (precision * recall) / (precision + recall)
 
 
+def calculate_chunk_recall_precision(matched_songs: list, expected_songs: list, song_chunks_count: dict, k: int = None) -> dict:
+    """计算歌词检索的 Chunk 级别 Recall@K 和 Precision@K
+    
+    适用于一首歌被分成多个 chunks 的场景。
+    当检索到同一首歌的多个 chunks 时，都算作相关文档。
+    
+    Args:
+        matched_songs: 检索返回的歌曲列表（top_k个）
+        expected_songs: 期望命中的歌曲列表
+        song_chunks_count: {歌曲名: 该歌曲的总chunks数}
+        k: 如果指定，只取前k个检索结果
+    
+    Returns:
+        dict: {
+            "matched_chunks": 命中的 chunks 数量,
+            "total_chunks": 该歌曲的总 chunks 数量,
+            "recall": Recall@K,
+            "precision": Precision@K,
+            "per_song_recall": {歌曲名: recall}
+        }
+    """
+    songs_to_check = matched_songs[:k] if k else matched_songs
+    
+    # 统计命中的 chunks 数（同一首歌的多个 chunks 都算）
+    matched_chunks = 0
+    per_song_matched = defaultdict(int)
+    per_song_total = defaultdict(int)
+    
+    for song in songs_to_check:
+        song_norm = normalize_for_comparison(str(song))
+        for expected in expected_songs:
+            expected_norm = normalize_for_comparison(str(expected))
+            if (expected_norm == song_norm or 
+                expected_norm in song_norm or 
+                song_norm in expected_norm):
+                matched_chunks += 1
+                per_song_matched[expected] += 1
+                break  # 每个检索结果只算一次
+    
+    # 统计每首预期歌曲的总 chunks 数
+    for expected in expected_songs:
+        expected_norm = normalize_for_comparison(str(expected))
+        for track, count in song_chunks_count.items():
+            track_norm = normalize_for_comparison(str(track))
+            if (expected_norm == track_norm or 
+                expected_norm in track_norm or 
+                track_norm in expected_norm):
+                per_song_total[expected] = count
+                break
+        if expected not in per_song_total:
+            per_song_total[expected] = 1  # 默认至少1个
+    
+    # 计算 Recall@K = 命中的 chunks / 该歌曲的总 chunks
+    total_chunks = sum(per_song_total.values())
+    recall = matched_chunks / total_chunks if total_chunks > 0 else 0.0
+    
+    # 计算 Precision@K = 命中的 chunks / k
+    num_retrieved = k if k else len(songs_to_check)
+    precision = matched_chunks / num_retrieved if num_retrieved > 0 else 0.0
+    
+    # 计算每首歌的 recall
+    per_song_recall = {}
+    for song in expected_songs:
+        matched = per_song_matched.get(song, 0)
+        total = per_song_total.get(song, 1)
+        per_song_recall[song] = matched / total if total > 0 else 0.0
+    
+    return {
+        "matched_chunks": matched_chunks,
+        "total_chunks": total_chunks,
+        "recall": recall,
+        "precision": precision,
+        "per_song_recall": per_song_recall
+    }
+
+
 def calculate_ndcg(relevance_scores: list, k: int = None) -> float:
     """计算 NDCG@K (Normalized Discounted Cumulative Gain)
     
@@ -99,43 +175,6 @@ def calculate_ndcg(relevance_scores: list, k: int = None) -> float:
     idcg_val = dcg(ideal_scores)
     
     return dcg_val / idcg_val if idcg_val > 0 else 0.0
-
-
-def check_keywords_match(answer: str, expected_keywords: list) -> dict:
-    """检查回答中是否包含预期的关键词"""
-    answer_norm = normalize_text(answer).lower()
-    matched = [kw for kw in expected_keywords if normalize_text(kw).lower() in answer_norm]
-    missed = [kw for kw in expected_keywords if normalize_text(kw).lower() not in answer_norm]
-    
-    precision = len(matched) / len(expected_keywords) if expected_keywords else 0
-    recall = precision  # 在关键词匹配场景中 precision 和 recall 相同
-    
-    return {
-        "matched": matched,
-        "missed": missed,
-        "precision": precision,
-        "recall": recall,
-        "f1": calculate_f1(precision, recall)
-    }
-
-
-def check_song_match(matched_songs: list, expected_keywords: list) -> dict:
-    """检查检索到的歌曲是否包含预期关键词（复用 check_keywords_match）"""
-    songs_str = normalize_text(" ".join(str(s) for s in matched_songs)).lower()
-    # 调用通用匹配逻辑
-    matched = [kw for kw in expected_keywords if normalize_text(kw).lower() in songs_str]
-    missed = [kw for kw in expected_keywords if normalize_text(kw).lower() not in songs_str]
-    
-    precision = len(matched) / len(expected_keywords) if expected_keywords else 0
-    recall = precision
-    
-    return {
-        "matched": matched,
-        "missed": missed,
-        "precision": precision,
-        "recall": recall,
-        "f1": calculate_f1(precision, recall)
-    }
 
 
 def normalize_text(text: str) -> str:
@@ -237,6 +276,10 @@ def run_test(test_data: list, index_loader, retrieval_pipeline, answer_generator
     """运行批量测试"""
     results = []
     
+    # 获取每首歌的 chunks 数量（用于歌词检索评估）
+    song_chunks_count = index_loader.get_song_chunks_count()
+    logger.info(f"歌词索引统计: {len(song_chunks_count)} 首歌, 共 {sum(song_chunks_count.values())} 个 chunks")
+    
     logger.info(f"开始批量测试，共 {len(test_data)} 个问题")
     
     for i, item in enumerate(test_data, 1):
@@ -279,18 +322,18 @@ def run_test(test_data: list, index_loader, retrieval_pipeline, answer_generator
             # 获取匹配的歌曲（确保都是字符串）
             matched_songs = [str(doc.metadata.get("track", "")) for doc in docs]
             
-            # 检查关键词匹配
-            answer_match = check_keywords_match(answer_text, expected)
-            song_match = check_song_match(matched_songs, expected)
-            
             # 检查歌曲命中（核心：检索是否命中正确歌曲）
             song_hit = check_song_hit(matched_songs, expected_songs) if expected_songs else None
             
-            # 综合评分：优先看歌曲命中，其次看关键词匹配
-            if song_hit and song_hit["is_hit"]:
-                overall_success = True
-            else:
-                overall_success = max(answer_match["precision"], song_match["precision"]) >= 0.5
+            # 歌词检索类型：计算 chunk 级别的 Recall@K 和 Precision@K
+            chunk_metrics = None
+            if q_type == "lyrics_retrieval" and expected_songs:
+                chunk_metrics = calculate_chunk_recall_precision(
+                    matched_songs, expected_songs, song_chunks_count, k=5
+                )
+            
+            # 成功标准：歌曲命中即成功
+            overall_success = song_hit and song_hit.get("is_hit", False)
             
             result_item = {
                 "id": qid,
@@ -299,10 +342,8 @@ def run_test(test_data: list, index_loader, retrieval_pipeline, answer_generator
                 "answer": answer_text,
                 "matched_songs": matched_songs,
                 "expected_songs": expected_songs,
-                "answer_match": answer_match,
-                "song_match": song_match,
                 "song_hit": song_hit,
-                "overall_precision": max(answer_match["precision"], song_match["precision"]),
+                "chunk_metrics": chunk_metrics,
                 "elapsed_time": total_elapsed,
                 "retrieval_time": retrieval_elapsed,
                 "generation_time": generation_elapsed,
@@ -318,9 +359,25 @@ def run_test(test_data: list, index_loader, retrieval_pipeline, answer_generator
                         print(f"🎯 歌曲命中: {song_hit['hit_songs']} (排名 #{song_hit['hit_rank']})")
                     else:
                         print(f"❌ 歌曲未命中! 期望: {song_hit['expected_songs']}, 实际: {matched_songs[:3]}")
-                print(f"📊 回答关键词: {answer_match['matched']} / {len(expected)} ({answer_match['precision']:.1%})")
-                if answer_match["missed"]:
-                    print(f"⚠️ 漏检关键词: {answer_match['missed']}")
+                
+                # 歌词检索：显示详细的检索结果
+                if q_type == "lyrics_retrieval" and chunk_metrics:
+                    print(f"\n📋 歌词检索详情 (Chunk Level):")
+                    print(f"   期望歌曲: {expected_songs}")
+                    print(f"   检索结果 (Top 5):")
+                    for i, song in enumerate(matched_songs[:5], 1):
+                        # 检查是否命中
+                        is_hit = False
+                        for expected in expected_songs:
+                            if (normalize_for_comparison(str(song)) == normalize_for_comparison(str(expected)) or
+                                normalize_for_comparison(str(expected)) in normalize_for_comparison(str(song))):
+                                is_hit = True
+                                break
+                        mark = "✅" if is_hit else "❌"
+                        print(f"      #{i} {mark} {song}")
+                    print(f"   Chunk Recall@5: {chunk_metrics['matched_chunks']}/{chunk_metrics['total_chunks']} = {chunk_metrics['recall']:.1%}")
+                    print(f"   Chunk Precision@5: {chunk_metrics['precision']:.1%}")
+                
                 print(f"⏱️ 耗时: 检索 {retrieval_elapsed:.2f}s + 生成 {generation_elapsed:.2f}s = 总计 {total_elapsed:.2f}s")
                 print(f"\n💡 AI回答: {answer_text[:300]}...")
         
@@ -366,16 +423,36 @@ def print_summary(results: list):
         hit_ranks = [h.get("hit_rank", 0) for h in song_hit_results if h.get("hit_rank", 0) > 0]
         avg_hit_rank = sum(hit_ranks) / len(hit_ranks) if hit_ranks else 0
         
-        # 计算召回率
-        recalls = [h.get("recall", 0) for h in song_hit_results]
-        avg_song_recall = sum(recalls) / len(recalls) if recalls else 0
-        
         print(f"\n{'─' * 70}")
         print(f"🎯 歌曲命中指标 (Song Hit Metrics) - 核心评估")
         print(f"{'─' * 70}")
         print(f"  歌曲命中率:     {song_hit_rate:.1%} ({hit_count}/{len(song_hit_results)})")
         print(f"  平均命中排名:   #{avg_hit_rank:.1f}")
-        print(f"  歌曲召回率:     {avg_song_recall:.1%}")
+    
+    # ---------- 2.5 歌词检索 Chunk 指标 (Recall@K, Precision@K) ----------
+    lyrics_results = [r for r in results if r.get("type") == "lyrics_retrieval" and r.get("chunk_metrics")]
+    if lyrics_results:
+        chunk_metrics_list = [r.get("chunk_metrics") for r in lyrics_results]
+        
+        # 计算平均 Recall@K 和 Precision@K
+        total_recall = sum(m.get("recall", 0) for m in chunk_metrics_list)
+        total_precision = sum(m.get("precision", 0) for m in chunk_metrics_list)
+        avg_chunk_recall = total_recall / len(chunk_metrics_list) if chunk_metrics_list else 0
+        avg_chunk_precision = total_precision / len(chunk_metrics_list) if chunk_metrics_list else 0
+        
+        # 统计命中的 chunks 分布
+        matched_chunks_list = [m.get("matched_chunks", 0) for m in chunk_metrics_list]
+        total_matched = sum(matched_chunks_list)
+        max_possible = sum(m.get("total_chunks", 0) for m in chunk_metrics_list)
+        
+        print(f"\n{'─' * 70}")
+        print(f"🎤 歌词检索 Chunk 指标 (Lyrics Retrieval - Chunk Level)")
+        print(f"{'─' * 70}")
+        print(f"  测试数量:       {len(lyrics_results)} 条")
+        print(f"  平均 Recall@5:  {avg_chunk_recall:.1%}")
+        print(f"  平均 Precision@5: {avg_chunk_precision:.1%}")
+        print(f"  命中 Chunks 分布: min={min(matched_chunks_list)}, max={max(matched_chunks_list)}, avg={sum(matched_chunks_list)/len(matched_chunks_list):.1f}")
+        print(f"  总命中/总需找回:  {total_matched}/{max_possible} ({total_matched/max_possible:.1%} if max_possible > 0 else 0)")
     
     # ---------- 3. 检索指标 (基于歌曲命中 - MRR, Hit Rate, NDCG) ----------
     # 使用 song_hit 来计算检索指标（更准确反映检索效果）
@@ -439,23 +516,7 @@ def print_summary(results: list):
     print(f"  Hit Rate@5:                     {retrieval_hit_rate_5:.1%}")
     print(f"  NDCG@5:                         {avg_retrieval_ndcg:.4f}")
     
-    # ---------- 4. 生成质量指标 (基于关键词匹配) ----------
-    answer_precisions = [r.get("answer_match", {}).get("precision", 0) for r in successful_results]
-    answer_recalls = [r.get("answer_match", {}).get("recall", 0) for r in successful_results]
-    
-    avg_answer_precision = sum(answer_precisions) / len(answer_precisions) if answer_precisions else 0
-    avg_answer_recall = sum(answer_recalls) / len(answer_recalls) if answer_recalls else 0
-    avg_answer_f1 = calculate_f1(avg_answer_precision, avg_answer_recall)
-    
-    print(f"\n{'─' * 70}")
-    print(f"✍️  生成质量指标 (Generation Quality - 基于关键词匹配)")
-    print(f"{'─' * 70}")
-    print(f"  Answer Precision (关键词匹配):  {avg_answer_precision:.1%}")
-    print(f"  Answer Recall (关键词召回):     {avg_answer_recall:.1%}")
-    print(f"  Answer F1 Score:                {avg_answer_f1:.4f}")
-    print(f"  📝 注: 关键词匹配较严格，同义词会导致分数偏低")
-    
-    # ---------- 5. 性能指标 ----------
+    # ---------- 4. 性能指标 ----------
     elapsed_times = [r.get("elapsed_time", 0) for r in successful_results]
     retrieval_times = [r.get("retrieval_time", 0) for r in successful_results]
     generation_times = [r.get("generation_time", 0) for r in successful_results]
@@ -473,14 +534,11 @@ def print_summary(results: list):
     print(f"  最快响应时间:    {min(elapsed_times) if elapsed_times else 0:.2f}s")
     print(f"  最慢响应时间:    {max(elapsed_times) if elapsed_times else 0:.2f}s")
     
-    # ---------- 6. 按类型统计 ----------
-    type_stats = defaultdict(lambda: {"total": 0, "success": 0, "precisions": [], "song_hits": 0})
+    # ---------- 5. 按类型统计 ----------
+    type_stats = defaultdict(lambda: {"total": 0, "song_hits": 0})
     for r in results:
         t = r.get("type", "unknown")
         type_stats[t]["total"] += 1
-        if r.get("success", False):
-            type_stats[t]["success"] += 1
-        type_stats[t]["precisions"].append(r.get("overall_precision", 0))
         song_hit = r.get("song_hit")
         if song_hit and song_hit.get("is_hit"):
             type_stats[t]["song_hits"] += 1
@@ -489,13 +547,9 @@ def print_summary(results: list):
     print(f"📋 按类型统计 (Breakdown by Type)")
     print(f"{'─' * 70}")
     for t, stats in type_stats.items():
-        rate = stats["success"] / stats["total"] * 100
-        avg_p = sum(stats["precisions"]) / len(stats["precisions"]) if stats["precisions"] else 0
         song_hit_rate = stats["song_hits"] / stats["total"] * 100
         print(f"  • {t}:")
-        print(f"      成功率: {stats['success']}/{stats['total']} ({rate:.1f}%)")
-        print(f"      歌曲命中: {stats['song_hits']}/{stats['total']} ({song_hit_rate:.1f}%)")
-        print(f"      平均精确度: {avg_p:.1%}")
+        print(f"      歌曲命中率: {stats['song_hits']}/{stats['total']} ({song_hit_rate:.1f}%)")
 
 
 def save_results(results: list, output_path: str):
@@ -507,11 +561,8 @@ def save_results(results: list, output_path: str):
             "type": r["type"],
             "question": r["question"],
             "success": r.get("success", False),
-            "overall_precision": r.get("overall_precision", 0),
             "matched_songs": r.get("matched_songs", []),
             "expected_songs": r.get("expected_songs", []),
-            "answer_keywords_match": r.get("answer_match", {}),
-            "song_keywords_match": r.get("song_match", {}),
             "song_hit": {
                 "hit": r.get("song_hit", {}).get("is_hit", False) if r.get("song_hit") else None,
                 "hit_songs": r.get("song_hit", {}).get("hit_songs", []) if r.get("song_hit") else [],
@@ -519,6 +570,7 @@ def save_results(results: list, output_path: str):
                 "hit_rank": r.get("song_hit", {}).get("hit_rank", 0) if r.get("song_hit") else 0,
                 "recall": r.get("song_hit", {}).get("recall", 0) if r.get("song_hit") else 0
             },
+            "chunk_metrics": r.get("chunk_metrics"),  # 歌词检索的 chunk 级别指标
             "elapsed_time": r.get("elapsed_time", 0),
             "retrieval_time": r.get("retrieval_time", 0),
             "generation_time": r.get("generation_time", 0),

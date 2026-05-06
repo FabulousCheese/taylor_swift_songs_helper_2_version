@@ -13,18 +13,26 @@ class GenerationAnswer:
 
     def __init__(self):
         self.prompt = ChatPromptTemplate.from_template("""
-You are a Taylor Swift assistant. Answer concisely based on context.
+【角色】
+你是一个Taylor Swift歌词助手。
 
-Context: {context}
-Question: {question}
+【约束规则 - 必须严格遵守】
+1. 只基于以下检索到的歌词内容进行回答，禁止编造任何歌词或信息
+2. 如果检索结果中不包含能回答问题的信息，直接回复"抱歉，我没有在检索结果中找到相关信息"
+3. 推荐歌曲时，只推荐context中出现的歌曲，不要推荐不存在的歌曲
+4. 引用歌词时使用「」双引号，并在后面注明歌曲名
 
-Rules:
-- Recommend songs ONLY from context
-- Cite: [Track - Album]
-- Keep answer brief (under 3 sentences)
-- If asking for similar songs, focus on mood/theme
+【输出格式】
+- 答案简洁明了，不超过3句话
+- 如有引用歌词，格式：「歌词内容」—— 歌曲名
 
-Answer:
+【上下文】
+{context}
+
+【用户问题】
+{question}
+
+请根据以上规则回答：
 """)
         logger.debug("GenerationAnswer 初始化完成")
 
