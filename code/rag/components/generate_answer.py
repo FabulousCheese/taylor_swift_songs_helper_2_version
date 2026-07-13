@@ -14,7 +14,7 @@ class GenerationAnswer:
     def __init__(self):
         self.prompt = ChatPromptTemplate.from_template("""
 【角色】
-你是一个Taylor Swift歌词助手。
+你是一个Taylor Swift歌曲助手。
 
 【约束规则 - 必须严格遵守】
 1. 只基于以下检索到的歌词内容进行回答，禁止编造任何歌词或信息

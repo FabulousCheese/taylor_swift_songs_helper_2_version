@@ -17,19 +17,9 @@ class RetrievalSearch:
     """检索搜索类"""
 
     def __init__(self):
-        self.intent_prompt = """
-        You are a classifier.
-        Based on the user's question, classify it into ONE category:
-        - "lyrics": if the user is asking about lyrics, lines from a song, or wants to find a song by its lyric.
-        - "theme": if the user is asking about theme, mood, album, meaning, story, or recommendations.
-
-        ONLY output the category word: lyrics or theme.
-        """
-        
-        # BM25 Retriever 缓存（避免重复创建）
         self._bm25_cache = {}
 
-    def smart_route_intent(self, llm, question: str) -> str:
+    def smart_route_intent(self, question: str) -> str:
         """让 LLM 判断用户意图"""
         try:            
             
@@ -49,23 +39,6 @@ class RetrievalSearch:
             logger.error(f"意图识别失败: {e}")
             return "theme"
     
-    # def smart_route_intent(self, llm, question: str) -> str:
-    #     """让 LLM 判断用户意图"""
-    #     try:            
-    #         response = llm.invoke(f"{self.intent_prompt}\n\nQuestion: {question}\nAnswer:")
-    #         intent = response.content.strip().lower()
-            
-    #         if intent not in ["lyrics", "theme"]:
-    #             logger.warning(f"LLM 返回了未知意图 '{intent}'，默认使用 theme")
-    #             intent = "theme"
-            
-    #         logger.info(f"意图识别结果: {intent}")
-    #         return intent
-            
-    #     except Exception as e:
-    #         logger.error(f"意图识别失败: {e}")
-    #         return "theme"
-
     def wants_full_lyrics(self, question: str) -> bool:
         """检查问题是否要求完整歌词"""
         keywords = ["whole", "complete", "full", "all the lyrics", "完整", "全部"]
@@ -132,7 +105,7 @@ class RetrievalSearch:
     def smart_search(self, llm, index_loader, question):
         """智能检索入口"""
         try:
-            intent = self.smart_route_intent(llm, question)
+            intent = self.smart_route_intent(question)
             
             if intent == "lyrics":
                 logger.info("启用：歌词检索模式 (BM25 + 语义混合)")

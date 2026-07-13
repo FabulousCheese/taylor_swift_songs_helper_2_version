@@ -36,3 +36,11 @@ Thumbs.db
 venv/
 env/
 .venv/
+rag-helper/
+
+# 日志文件
+*.log
+
+# 评估输出
+data/evaluate.log
+result/
