@@ -37,6 +37,12 @@ User Question
     Generate Answer
 ```
 
+## Demo
+
+![UI Screenshot](ui_pic.png)
+
+Try it yourself: `python code/demo.py` → http://localhost:7860
+
 ## Features
 
 - **Intent-aware routing** — automatically detects whether the query is about lyrics or themes/emotions
